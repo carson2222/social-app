@@ -37,7 +37,7 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/auth/login", s.handleLogin)
 	router.HandleFunc("/auth/register", s.handleRegister)
 	router.HandleFunc("/auth/logout", s.handleLogout)
-	router.HandleFunc("/profile", s.updateProfile)
+	router.HandleFunc("/profile", s.handleProfile)
 
 	// CORS settings
 	allowCredentials := handlers.AllowCredentials()
@@ -46,52 +46,38 @@ func (s *APIServer) Run() {
 	http.ListenAndServe(s.listenAddr, handlers.CORS(allowCredentials)(router))
 }
 
-func (s *APIServer) updateProfile(w http.ResponseWriter, r *http.Request) {
+func (s *APIServer) handleProfile(w http.ResponseWriter, r *http.Request) {
 	// Update the profile
 	if r.Method == http.MethodPost {
 		// Verify session
-		sessionId, err := s.getSession(r)
-		if err != nil || sessionId == "" {
-			WriteJSON(w, http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-
-		isValid, userId, err := s.storage.verifySession(sessionId)
-		if err != nil || userId == -1 || !isValid {
-			WriteJSON(w, http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-
-		// Load JSON data
-		data := &ProfileRequest{}
-		log.Println(r.FormValue("data"))
-
-		if err := json.Unmarshal([]byte(r.FormValue("data")), &data); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
-
-		// Load pfp if added
-		pfpSrc := ""
-		if data.Pfp == true {
-			pfpSrc, err = s.uploadProfilePicture(r)
-			if err != nil {
-				log.Println(err)
-				WriteJSON(w, http.StatusBadRequest, err.Error())
-				return
-			}
-		}
-
-		// Update profile
-		err = s.storage.updateProfile(userId, data.Name, data.Surname, data.Bio, pfpSrc)
+		userId, _, err := s.authSession(r)
 		if err != nil {
-			log.Println(err)
-			WriteJSON(w, http.StatusInternalServerError, err.Error())
-			return
+			WriteJSON(w, http.StatusInternalServerError, "Unauthorized:"+err.Error())
 		}
+
+		err = s.updateProfile(r, userId)
+		if err != nil {
+			WriteJSON(w, http.StatusInternalServerError, "Failed to update profile:"+err.Error())
+		}
+
+		WriteJSON(w, http.StatusOK, "OK")
+		return
+
 	}
 
-	WriteJSON(w, http.StatusOK, "OK")
+	// Get the profile
+	if r.Method == http.MethodGet {
+		// Verify session
+		// userId, _, err := s.authSession(r)
+		// if err != nil {
+		// 	WriteJSON(w, http.StatusInternalServerError, "Unauthorized:"+err.Error())
+		// }
+
+		WriteJSON(w, http.StatusOK, "OK")
+		return
+	}
+
+	WriteJSON(w, http.StatusMethodNotAllowed, "Method not allowed")
 }
 func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -314,4 +300,49 @@ func validateFileType(file multipart.File) (string, error) {
 	}
 
 	return "", nil
+}
+
+func (s *APIServer) authSession(r *http.Request) (int, string, error) {
+
+	sessionId, err := s.getSession(r)
+	if err != nil || sessionId == "" {
+		return -1, "", fmt.Errorf("failed to get session: %w", err)
+	}
+
+	isValid, userId, err := s.storage.verifySession(sessionId)
+	if err != nil || userId == -1 || !isValid {
+		return -1, "", fmt.Errorf("failed to verify session: %w", err)
+	}
+
+	return userId, sessionId, err
+}
+
+func (s *APIServer) updateProfile(r *http.Request, userId int) error {
+	// Load JSON data
+	data := &ProfileRequest{}
+	log.Println(r.FormValue("data"))
+
+	var err error
+	if err = json.Unmarshal([]byte(r.FormValue("data")), &data); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	// Load pfp if added
+	pfpSrc := ""
+	if data.Pfp == true {
+		pfpSrc, err = s.uploadProfilePicture(r)
+		if err != nil {
+			log.Println(err)
+			return fmt.Errorf("failed to upload profile picture: %w", err)
+		}
+	}
+
+	// Update profile
+	err = s.storage.updateProfile(userId, data.Name, data.Surname, data.Bio, pfpSrc)
+	if err != nil {
+		log.Println(err)
+		return fmt.Errorf("failed to update profile: %w", err)
+	}
+
+	return nil
 }
