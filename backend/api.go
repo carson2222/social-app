@@ -37,7 +37,7 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/auth/login", s.handleLogin)
 	router.HandleFunc("/auth/register", s.handleRegister)
 	router.HandleFunc("/auth/logout", s.handleLogout)
-	router.HandleFunc("/test", s.test)
+	router.HandleFunc("/profile", s.updateProfile)
 
 	// CORS settings
 	allowCredentials := handlers.AllowCredentials()
@@ -46,17 +46,52 @@ func (s *APIServer) Run() {
 	http.ListenAndServe(s.listenAddr, handlers.CORS(allowCredentials)(router))
 }
 
-func (s *APIServer) test(w http.ResponseWriter, r *http.Request) {
+func (s *APIServer) updateProfile(w http.ResponseWriter, r *http.Request) {
+	// Update the profile
+	if r.Method == http.MethodPost {
+		// Verify session
+		sessionId, err := s.getSession(r)
+		if err != nil || sessionId == "" {
+			WriteJSON(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
 
-	pfpPath, err := s.uploadProfilePicture(r)
-	if err != nil {
-		log.Println(err)
-		WriteJSON(w, http.StatusBadRequest, err.Error())
-		return
+		isValid, userId, err := s.storage.verifySession(sessionId)
+		if err != nil || userId == -1 || !isValid {
+			WriteJSON(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		// Load JSON data
+		data := &ProfileRequest{}
+		log.Println(r.FormValue("data"))
+
+		if err := json.Unmarshal([]byte(r.FormValue("data")), &data); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Load pfp if added
+		pfpSrc := ""
+		if data.Pfp == true {
+			pfpSrc, err = s.uploadProfilePicture(r)
+			if err != nil {
+				log.Println(err)
+				WriteJSON(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		// Update profile
+		err = s.storage.updateProfile(userId, data.Name, data.Surname, data.Bio, pfpSrc)
+		if err != nil {
+			log.Println(err)
+			WriteJSON(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
-	log.Println(pfpPath)
 
-	WriteJSON(w, http.StatusOK, pfpPath)
+	WriteJSON(w, http.StatusOK, "OK")
 }
 func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -72,7 +107,6 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Change to auth user
 	userId, err := s.storage.authUser(credentials)
 	if err != nil || userId == -1 {
 		log.Println(err)
@@ -111,6 +145,12 @@ func (s *APIServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := s.storage.initProfile(userId); err != nil {
+		log.Println(err)
+		WriteJSON(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	sessionId, err := s.storage.createSession(userId)
 	if err != nil || sessionId == "" {
 		log.Println(err)
@@ -136,7 +176,7 @@ func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isValid, err := s.storage.verifySession(sessionId)
+	isValid, _, err := s.storage.verifySession(sessionId)
 	if err != nil || !isValid {
 		WriteJSON(w, http.StatusUnauthorized, "Unauthorized"+err.Error())
 		return
@@ -156,7 +196,7 @@ func (s *APIServer) createCredentials(r *http.Request) (*Credentials, error) {
 
 	credentials := &Credentials{}
 
-	if err := json.NewDecoder(r.Body).Decode(credentials); err != nil {
+	if err := json.Unmarshal([]byte(r.FormValue("data")), &credentials); err != nil {
 		return nil, err
 	}
 

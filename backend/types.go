@@ -19,3 +19,10 @@ type SuccessAuthResponse struct {
 	Status    string `json:"status"`
 	Action    string `json:"action"`
 }
+
+type ProfileRequest struct {
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Bio     string `json:"bio"`
+	Pfp     bool   `json:"pfp"`
+}

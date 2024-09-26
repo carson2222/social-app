@@ -12,8 +12,10 @@ type Storage interface {
 	createUser(*Credentials) (int, error)
 	authUser(*Credentials) (int, error)
 	createSession(int) (string, error)
-	verifySession(string) (bool, error)
+	verifySession(string) (bool, int, error)
 	killSession(string) error
+	initProfile(int) error
+	updateProfile(int, string, string, string, string) error
 }
 type PostgresStore struct {
 	db *sql.DB
@@ -24,13 +26,11 @@ func NewPostgresStorage() (*PostgresStore, error) {
 	db, err := sql.Open("postgres", connStr)
 
 	if err != nil {
-		log.Fatal(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		log.Fatal(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	return &PostgresStore{db: db}, nil
@@ -38,20 +38,21 @@ func NewPostgresStorage() (*PostgresStore, error) {
 
 func (s *PostgresStore) Init() error {
 
-	if err := s.createExtensions(); err != nil {
-		return err
+	tasks := []func() error{
+		s.createExtensions,
+		s.createUsersTable,
+		s.createSessionsTable,
+		s.createProfilesTable,
+		s.createFriendsTable,
 	}
 
-	if err := s.createUsersTable(); err != nil {
-		return err
-	}
-
-	if err := s.createSessionsTable(); err != nil {
-		return err
+	for _, task := range tasks {
+		if err := task(); err != nil {
+			return err
+		}
 	}
 
 	log.Println("Storage initialized")
-
 	return nil
 }
 
@@ -90,6 +91,39 @@ func (s *PostgresStore) createSessionsTable() error {
 	return err
 }
 
+func (s *PostgresStore) createProfilesTable() error {
+
+	query := `CREATE TABLE IF NOT EXISTS profiles (
+		user_id INTEGER REFERENCES users (id) ON DELETE CASCADE NOT NULL,
+		name TEXT,
+		surname TEXT,
+		bio TEXT,
+		pfp TEXT
+	)`
+
+	_, err := s.db.Exec(query)
+	return err
+}
+
+func (s *PostgresStore) createFriendsTable() error {
+	query := `CREATE TABLE IF NOT EXISTS friends (
+    user_id INTEGER REFERENCES users (id) ON DELETE CASCADE,
+    friend_id INTEGER REFERENCES users (id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, friend_id)
+);`
+	// INSERT INTO friends (user_id, friend_id) VALUES (1, 2), (2, 1);
+
+	_, err := s.db.Exec(query)
+
+	return err
+}
+
+func (s *PostgresStore) initProfile(id int) error {
+	query := `INSERT INTO profiles (user_id) VALUES ($1);`
+
+	_, err := s.db.Exec(query, id)
+	return err
+}
 func (s *PostgresStore) createUser(c *Credentials) (int, error) {
 	query := `INSERT INTO users (email, password) VALUES ($1, crypt($2, gen_salt('bf'))) RETURNING id;`
 	ID := -1
@@ -130,17 +164,18 @@ VALUES ($1, encode($2::text::bytea, 'hex') || encode(gen_random_bytes(32), 'hex'
 	return sessionToken, nil
 }
 
-func (s *PostgresStore) verifySession(sessionToken string) (bool, error) {
+func (s *PostgresStore) verifySession(sessionToken string) (bool, int, error) {
 
-	query := `SELECT is_valid FROM sessions WHERE session_token = $1;`
+	query := `SELECT is_valid, user_id FROM sessions WHERE session_token = $1;`
 
 	isValid := false
-	err := s.db.QueryRow(query, sessionToken).Scan(&isValid)
+	userId := -1
+	err := s.db.QueryRow(query, sessionToken).Scan(&isValid, &userId)
 	if err != nil {
-		return false, err
+		return false, -1, err
 	}
 
-	return isValid, nil
+	return isValid, userId, nil
 }
 
 func (s *PostgresStore) killSession(sessionToken string) error {
@@ -153,4 +188,41 @@ func (s *PostgresStore) killSession(sessionToken string) error {
 	}
 
 	return nil
+}
+func (s *PostgresStore) updateProfile(id int, name, surname, bio, pfp string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if name != "" {
+		_, err := tx.Exec("UPDATE profiles SET name = $1 WHERE user_id = $2", name, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	if surname != "" {
+		_, err := tx.Exec("UPDATE profiles SET surname = $1 WHERE user_id = $2", surname, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	if bio != "" {
+		_, err := tx.Exec("UPDATE profiles SET bio = $1 WHERE user_id = $2", bio, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	if pfp != "" {
+		_, err := tx.Exec("UPDATE profiles SET pfp = $1 WHERE user_id = $2", pfp, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

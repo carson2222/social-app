@@ -7,6 +7,9 @@ import (
 )
 
 func main() {
+	// DEV
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	storage, err := NewPostgresStorage()
 
 	if err != nil {
