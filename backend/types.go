@@ -26,3 +26,15 @@ type ProfileRequest struct {
 	Bio     string `json:"bio"`
 	Pfp     bool   `json:"pfp"`
 }
+
+type GetProfileRequest struct {
+	ID int `json:"id"`
+}
+
+type Profile struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Bio     string `json:"bio"`
+	Pfp     string `json:"pfp"`
+}
