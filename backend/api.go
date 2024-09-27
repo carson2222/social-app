@@ -39,6 +39,9 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/auth/logout", s.handleLogout)
 	router.HandleFunc("/profile", s.handleProfile)
 
+	// Serve static files
+	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads/"))))
+
 	// CORS settings
 	allowCredentials := handlers.AllowCredentials()
 
@@ -68,10 +71,10 @@ func (s *APIServer) handleProfile(w http.ResponseWriter, r *http.Request) {
 	// Get the profile
 	if r.Method == http.MethodGet {
 		// Verify session
-		// userId, _, err := s.authSession(r)
-		// if err != nil {
-		// 	WriteJSON(w, http.StatusInternalServerError, "Unauthorized:"+err.Error())
-		// }
+		userId, _, err := s.authSession(r)
+		if err != nil {
+			WriteJSON(w, http.StatusInternalServerError, "Unauthorized:"+err.Error())
+		}
 
 		WriteJSON(w, http.StatusOK, "OK")
 		return
@@ -241,7 +244,7 @@ func (s *APIServer) uploadProfilePicture(r *http.Request) (string, error) {
 		return "", err
 	}
 
-	filePath := fmt.Sprintf("./uploads/%s", fileName+"."+imgType)
+	filePath := fmt.Sprintf("./uploads/pfp/%s", fileName+"."+imgType)
 	f, err := os.Create(filePath)
 	if err != nil {
 		return "", err
@@ -320,7 +323,6 @@ func (s *APIServer) authSession(r *http.Request) (int, string, error) {
 func (s *APIServer) updateProfile(r *http.Request, userId int) error {
 	// Load JSON data
 	data := &ProfileRequest{}
-	log.Println(r.FormValue("data"))
 
 	var err error
 	if err = json.Unmarshal([]byte(r.FormValue("data")), &data); err != nil {
