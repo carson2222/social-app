@@ -23,7 +23,8 @@ func NewAPIServer(listenAddr string, storage *storage.PostgresStore) *APIServer 
 
 func (s *APIServer) Run() {
 	router := mux.NewRouter()
-	// router.HandleFunc("/")
+	router.HandleFunc("/ws", s.serveWs)
+
 	router.HandleFunc("/auth/login", s.handleLogin)
 	router.HandleFunc("/auth/register", s.handleRegister)
 	router.HandleFunc("/auth/logout", s.handleLogout)
