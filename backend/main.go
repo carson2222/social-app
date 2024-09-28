@@ -1,16 +1,17 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
-	"net/http"
+
+	"github.com/carson2222/social-app/api"
+	"github.com/carson2222/social-app/storage"
 )
 
 func main() {
 	// DEV
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	storage, err := NewPostgresStorage()
+	storage, err := storage.NewPostgresStorage()
 
 	if err != nil {
 		log.Fatal(err)
@@ -20,13 +21,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server := NewAPIServer("127.0.0.1:3000", storage)
+	server := api.NewAPIServer("127.0.0.1:3000", storage)
 
 	server.Run()
-}
-
-func WriteJSON(w http.ResponseWriter, status int, v any) error {
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(v)
 }
