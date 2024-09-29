@@ -3,5 +3,6 @@
     "activityBar.background": "#570053",
     "titleBar.activeBackground": "#7A0175",
     "titleBar.activeForeground": "#FFFBFF"
-  }
+  },
+  "cSpell.words": ["unmarshaling", "upgrader"]
 }

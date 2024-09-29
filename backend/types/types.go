@@ -38,3 +38,14 @@ type Profile struct {
 	Bio     string `json:"bio"`
 	Pfp     string `json:"pfp"`
 }
+
+type SentMessageWS struct {
+	ChatId  int    `json:"chat_id"`
+	Content string `json:"content"`
+}
+type ReceivedMessageWS struct {
+	ChatId   int       `json:"chat_id"`
+	SenderId int       `json:"sender_id"`
+	Content  string    `json:"content"`
+	SentAt   time.Time `json:"sent_at"`
+}

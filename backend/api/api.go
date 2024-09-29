@@ -23,7 +23,8 @@ func NewAPIServer(listenAddr string, storage *storage.PostgresStore) *APIServer 
 
 func (s *APIServer) Run() {
 	router := mux.NewRouter()
-	router.HandleFunc("/ws", s.serveWs)
+	router.HandleFunc("/ws/messages", s.serveCommunicatorWs)
+	go handleMessages()
 
 	router.HandleFunc("/auth/login", s.handleLogin)
 	router.HandleFunc("/auth/register", s.handleRegister)
@@ -42,4 +43,21 @@ func (s *APIServer) Run() {
 
 	log.Println("Listening on port " + s.listenAddr)
 	http.ListenAndServe(s.listenAddr, handlers.CORS(allowCredentials)(router))
+}
+
+func handleMessages() {
+	for {
+		msg := <-broadcast
+		log.Println(clients)
+
+		// Iterate through clients and send messages
+		for client := range clients {
+			select {
+			case client.send <- msg:
+			default:
+				close(client.send)
+				delete(clients, client)
+			}
+		}
+	}
 }

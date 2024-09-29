@@ -53,6 +53,9 @@ func (s *PostgresStore) Init() error {
 		s.createProfilesTable,
 		s.createFriendsTable,
 		s.createFriendRequestsTable,
+		s.createChatsTable,
+		s.createChatUsersTable,
+		s.createMessagesTable,
 	}
 
 	for _, task := range tasks {
