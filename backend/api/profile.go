@@ -75,7 +75,7 @@ func (s *APIServer) updateProfile(r *http.Request, userId int) error {
 
 	// Load pfp if added
 	pfpSrc := ""
-	if data.Pfp == true {
+	if data.Pfp {
 		pfpSrc, err = utils.UploadProfilePicture(r)
 		if err != nil {
 			log.Println(err)

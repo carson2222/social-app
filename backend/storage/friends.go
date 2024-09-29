@@ -53,6 +53,27 @@ func (s *PostgresStore) IsRequestedFriend(senderId, receiverId int) (bool, error
 	return exists, nil
 }
 
+func (s *PostgresStore) GetFriends(userId int) (map[int]bool, error) {
+	query := `SELECT friend_id FROM friends WHERE user_id = $1;`
+
+	rows, err := s.db.Query(query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var friendIDs = make(map[int]bool)
+	for rows.Next() {
+		var friendId int
+		if err := rows.Scan(&friendId); err != nil {
+			return nil, err
+		}
+		friendIDs[friendId] = true
+	}
+
+	return friendIDs, nil
+}
+
 func (s *PostgresStore) AddFriend(senderId, receiverId int) error {
 	query := `INSERT INTO friend_requests (sender_id, receiver_id) VALUES ($1, $2);`
 

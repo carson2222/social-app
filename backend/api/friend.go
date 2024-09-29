@@ -116,7 +116,7 @@ func (s *APIServer) handleAddFriend(w http.ResponseWriter, r *http.Request) {
 		isRequested2, err2 := s.storage.IsRequestedFriend(friendId, userId)
 
 		if err1 != nil || err2 != nil {
-			utils.WriteJSON(w, http.StatusInternalServerError, "Failed to check if user is requested friend with the friend:"+err.Error())
+			utils.WriteJSON(w, http.StatusInternalServerError, "Failed to check if user is requested friend with the friend:"+err1.Error()+err2.Error())
 			return
 		}
 

@@ -65,7 +65,7 @@ func (s *PostgresStore) GetUserChats(userId int) (map[int]bool, error) {
 	return chatIDs, nil
 }
 
-func (s *PostgresStore) NewMessage(message *types.ReceivedMessageWS) error {
+func (s *PostgresStore) NewMessage(message *types.ReceivedMessageNewMessageWS) error {
 	query := `INSERT INTO messages (chat_id, sender_id, content, sent_at) VALUES ($1, $2, $3, $4);`
 
 	_, err := s.db.Exec(query, message.ChatId, message.SenderId, message.Content, message.SentAt)
@@ -85,4 +85,47 @@ func (s *PostgresStore) IsUserInChat(userId, chatId int) error {
 	}
 
 	return nil
+}
+
+func (s *PostgresStore) InitNewChat(chatName string, members []int) (int, error) {
+	// TODO: Add chat naming
+	tx, err := s.db.Begin()
+	if err != nil {
+		return -1, err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	isGroup := false
+	if len(members) > 2 {
+		isGroup = true
+	}
+	// Create new chat
+	query1 := `INSERT INTO chats (is_group) VALUES ($1) RETURNING id;`
+
+	var chatId int
+	err = tx.QueryRow(query1, isGroup).Scan(&chatId)
+	if err != nil {
+		return -1, err
+	}
+
+	// Add members to chat
+	query2 := `INSERT INTO chat_users (chat_id, user_id) VALUES ($1, $2);`
+
+	for _, member := range members {
+		_, err = tx.Exec(query2, chatId, member)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return -1, err
+	}
+
+	return chatId, nil
 }
