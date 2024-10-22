@@ -1,6 +1,9 @@
 package storage
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 func (s *PostgresStore) createSessionsTable() error {
 	SESSION_DURATION := 24 // Hours
@@ -36,13 +39,19 @@ VALUES ($1, encode($2::text::bytea, 'hex') || encode(gen_random_bytes(32), 'hex'
 
 func (s *PostgresStore) VerifySession(sessionToken string) (bool, int, error) {
 
-	query := `SELECT is_valid, user_id FROM sessions WHERE session_token = $1;`
+	query := `SELECT is_valid, user_id, expires_at FROM sessions WHERE session_token = $1;`
 
 	isValid := false
+	expiresAt := time.Now()
 	userId := -1
-	err := s.db.QueryRow(query, sessionToken).Scan(&isValid, &userId)
+
+	err := s.db.QueryRow(query, sessionToken).Scan(&isValid, &userId, &expiresAt)
 	if err != nil {
 		return false, -1, err
+	}
+
+	if time.Now().After(expiresAt) {
+		isValid = false
 	}
 
 	return isValid, userId, nil
