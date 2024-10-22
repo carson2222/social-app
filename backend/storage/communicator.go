@@ -1,8 +1,6 @@
 package storage
 
-import (
-	"github.com/carson2222/social-app/types"
-)
+import "time"
 
 func (s *PostgresStore) createChatsTable() error {
 
@@ -66,10 +64,10 @@ func (s *PostgresStore) GetUserChats(userId int) (map[int]bool, error) {
 	return chatIDs, nil
 }
 
-func (s *PostgresStore) NewMessage(message *types.ReceivedMessageNewMessageWS) error {
+func (s *PostgresStore) NewMessage(chatID int, senderID int, content string, sentAt time.Time) error {
 	query := `INSERT INTO messages (chat_id, sender_id, content, sent_at) VALUES ($1, $2, $3, $4);`
 
-	_, err := s.db.Exec(query, message.ChatId, message.SenderId, message.Content, message.SentAt)
+	_, err := s.db.Exec(query, chatID, senderID, content, sentAt)
 
 	return err
 }

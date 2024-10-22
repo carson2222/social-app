@@ -85,16 +85,9 @@ func (ws *WebSocketServer) ServerWebSocket(w http.ResponseWriter, r *http.Reques
 func (ws *WebSocketServer) registerHandlers() {
 	ws.handlers = make(map[string]func(*types.Client, []byte))
 	ws.handlers["sendMessage"] = ws.handleMessage
-	ws.handlers["friend"] = ws.handleFriendRequest
-	// You can add more handlers as needed.
+	ws.handlers["newChat"] = ws.handleNewChat
+	// ws.handlers["friend"] = ws.handleFriendRequest
 }
-
-// func (ws *WebSocketServer) registerVerifiers() {
-// 	ws.handlers = make(map[string]func(*types.Client, []byte))
-// 	ws.handlers["sendMessage"] = ws.handleMessage
-// 	ws.handlers["friend"] = ws.handleFriendRequest
-// 	// You can add more handlers as needed.
-// }
 
 func (ws *WebSocketServer) handleReads(client *types.Client) {
 	defer func() {
@@ -193,7 +186,7 @@ func (ws *WebSocketServer) BroadcastMessages() {
 
 			if isUserTheReceiver {
 				select {
-				case client.Send <- []byte(outgoingMsg.Content):
+				case client.Send <- msg:
 				default:
 					close(client.Send)
 					delete(ws.clients, client)

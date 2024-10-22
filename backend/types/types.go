@@ -64,13 +64,13 @@ type SentMessageNewChatWS struct {
 // 	"members": [27],
 // 	"name": "x"
 // }
-type ReceivedMessageNewMessageWS struct {
-	Type     string    `json:"type"`
-	ChatId   int       `json:"chat_id"`
-	SenderId int       `json:"sender_id"`
-	Content  string    `json:"content"`
-	SentAt   time.Time `json:"sent_at"`
-}
+// type ReceivedMessageNewMessageWS struct {
+// 	Type     string    `json:"type"`
+// 	ChatId   int       `json:"chat_id"`
+// 	SenderId int       `json:"sender_id"`
+// 	Content  string    `json:"content"`
+// 	SentAt   time.Time `json:"sent_at"`
+// }
 
 type ReceivedMessageNewChatWS struct {
 	Type    string    `json:"type"`
