@@ -9,7 +9,8 @@ func (s *PostgresStore) createChatsTable() error {
 	query := `CREATE TABLE IF NOT EXISTS chats (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_group BOOLEAN DEFAULT FALSE
+    is_group BOOLEAN DEFAULT FALSE,
+		name TEXT
 );`
 
 	_, err := s.db.Exec(query)
@@ -103,11 +104,18 @@ func (s *PostgresStore) InitNewChat(chatName string, members []int) (int, error)
 	if len(members) > 2 {
 		isGroup = true
 	}
+
+	var chatNameValue interface{}
+	if chatName == "" {
+		chatNameValue = nil
+	} else {
+		chatNameValue = chatName
+	}
 	// Create new chat
-	query1 := `INSERT INTO chats (is_group) VALUES ($1) RETURNING id;`
+	query1 := `INSERT INTO chats (is_group, name) VALUES ($1, $2) RETURNING id;`
 
 	var chatId int
-	err = tx.QueryRow(query1, isGroup).Scan(&chatId)
+	err = tx.QueryRow(query1, isGroup, chatNameValue).Scan(&chatId)
 	if err != nil {
 		return -1, err
 	}
@@ -129,3 +137,11 @@ func (s *PostgresStore) InitNewChat(chatName string, members []int) (int, error)
 
 	return chatId, nil
 }
+
+// func (s *PostgresStore) GetChatsInfo(userId int) error {
+
+// 	query := `SELECT chats.id as chat_id, created_at, is_group, chats.name, messages.sender_id, messages.content, messages.sent_at,
+// profiles.name, profiles.surname, profiles.pfp
+// FROM chats JOIN chat_users ON chat_users.chat_id = chats.id LEFT JOIN LATERAL (SELECT * FROM messages WHERE chat_id = chats.id
+// ORDER BY sent_at desc LIMIT 1) messages on true LEFT JOIN profiles on messages.sender_id = profiles.user_id WHERE chat_users.user_id = 26`
+// }

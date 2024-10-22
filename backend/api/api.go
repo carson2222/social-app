@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/carson2222/social-app/storage"
+	"github.com/carson2222/social-app/ws"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -12,19 +13,22 @@ import (
 type APIServer struct {
 	listenAddr string
 	storage    *storage.PostgresStore
+	wsServer   *ws.WebSocketServer
 }
 
-func NewAPIServer(listenAddr string, storage *storage.PostgresStore) *APIServer {
+func NewAPIServer(listenAddr string, storage *storage.PostgresStore, wsServer *ws.WebSocketServer) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
 		storage:    storage,
+		wsServer:   wsServer,
 	}
 }
 
 func (s *APIServer) Run() {
 	router := mux.NewRouter()
-	router.HandleFunc("/communicator/ws", s.serveCommunicatorWs)
-	go s.handleMessages()
+	// router.HandleFunc("/communicator/ws", s.serveCommunicatorWs)
+	// go s.handleMessages()
+	router.HandleFunc("/ws", s.wsServer.ServerWebSocket)
 
 	router.HandleFunc("/auth/login", s.handleLogin)
 	router.HandleFunc("/auth/register", s.handleRegister)
@@ -33,7 +37,7 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/profile", s.handleProfile).Methods("POST")
 	router.HandleFunc("/profile/{id}", s.handleProfile).Methods("GET")
 
-	router.HandleFunc("/friends/{action}/{id}", s.handleAddFriend)
+	router.HandleFunc("/friends/{action}/{id}", s.handleAddFriend).Methods("POST")
 
 	// Serve static files
 	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads/"))))

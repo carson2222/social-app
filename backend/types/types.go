@@ -79,3 +79,16 @@ type ReceivedMessageNewChatWS struct {
 	Name    string    `json:"name"`
 	SentAt  time.Time `json:"sent_at"`
 }
+
+type ChatShortInfo struct {
+	ChatId            int       `json:"chat_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	IsGroup           bool      `json:"is_group"`
+	Name              string    `json:"name"`
+	LastSenderId      int       `json:"last_sender_id"`
+	Message           string    `json:"message"`
+	LastActivity      string    `json:"last_activity"`
+	LastSenderName    string    `json:"last_sender_name"`
+	LastSenderSurname string    `json:"last_sender_surname"`
+	LastSenderPfp     string    `json:"last_sender_pfp"`
+}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -52,9 +53,14 @@ func (s *PostgresStore) VerifySession(sessionToken string) (bool, int, error) {
 
 	if time.Now().After(expiresAt) {
 		isValid = false
+		err = errors.New("session expired")
 	}
 
-	return isValid, userId, nil
+	if !isValid {
+		err = errors.New("session invalid")
+	}
+
+	return isValid, userId, err
 }
 
 func (s *PostgresStore) KillSession(sessionToken string) error {
