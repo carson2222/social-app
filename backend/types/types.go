@@ -39,47 +39,6 @@ type Profile struct {
 	Pfp     string `json:"pfp"`
 }
 
-type BaseMessageWs struct {
-	Type string `json:"type"`
-}
-type SentMessageNewMessageWS struct {
-	Type    string `json:"type"`
-	ChatId  int    `json:"chat_id"`
-	Content string `json:"content"`
-}
-
-// {
-// 	"type": "new_message",
-// 	"chat_id": 1,
-// 	"content": "Test"
-// }
-type SentMessageNewChatWS struct {
-	Type    string `json:"type"`
-	Members []int  `json:"members"`
-	Name    string `json:"name"`
-}
-
-// {
-// 	"type": "new_chat",
-// 	"members": [27],
-// 	"name": "x"
-// }
-// type ReceivedMessageNewMessageWS struct {
-// 	Type     string    `json:"type"`
-// 	ChatId   int       `json:"chat_id"`
-// 	SenderId int       `json:"sender_id"`
-// 	Content  string    `json:"content"`
-// 	SentAt   time.Time `json:"sent_at"`
-// }
-
-type ReceivedMessageNewChatWS struct {
-	Type    string    `json:"type"`
-	ChatId  int       `json:"chat_id"`
-	Members []int     `json:"members"`
-	Name    string    `json:"name"`
-	SentAt  time.Time `json:"sent_at"`
-}
-
 type ChatShortInfo struct {
 	ChatId            int       `json:"chat_id"`
 	CreatedAt         time.Time `json:"created_at"`

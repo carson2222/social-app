@@ -151,7 +151,3 @@ func (ws *WebSocketServer) handleNewChat(client *types.Client, rawMessage []byte
 	// Broadcast the message
 	ws.broadcast <- marshaledMsg
 }
-
-func (ws *WebSocketServer) handleFriendRequest(client *types.Client, rawMessage []byte) {
-	// Handle friend request logic here
-}

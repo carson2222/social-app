@@ -37,7 +37,7 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/profile", s.handleProfile).Methods("POST")
 	router.HandleFunc("/profile/{id}", s.handleProfile).Methods("GET")
 
-	router.HandleFunc("/friends/{action}/{id}", s.handleAddFriend).Methods("POST")
+	// router.HandleFunc("/friends/{action}/{id}", s.handleAddFriend).Methods("POST")
 
 	// Serve static files
 	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads/"))))

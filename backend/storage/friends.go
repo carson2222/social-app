@@ -33,11 +33,7 @@ func (s *PostgresStore) AreFriends(userId, friendId int) (bool, error) {
 	var exists bool
 	err := s.db.QueryRow(query, userId, friendId).Scan(&exists)
 
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
+	return exists, err
 }
 
 func (s *PostgresStore) IsRequestedFriend(senderId, receiverId int) (bool, error) {
@@ -46,11 +42,7 @@ func (s *PostgresStore) IsRequestedFriend(senderId, receiverId int) (bool, error
 	var exists bool
 	err := s.db.QueryRow(query, senderId, receiverId).Scan(&exists)
 
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
+	return exists, err
 }
 
 func (s *PostgresStore) GetFriends(userId int) (map[int]bool, error) {

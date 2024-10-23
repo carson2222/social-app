@@ -36,18 +36,27 @@ type NewMessage struct {
 	ChatID  int    `json:"chat_id"`
 }
 
-type NewChat struct {
+type AcceptFR struct {
 	Type     string `json:"type"`
-	Members  []int  `json:"members"`
-	ChatName string `json:"chat_name"`
+	SenderID int    `json:"sender_id"`
 }
 
+type AcceptFRData struct {
+	SenderID   int `json:"sender_id"`
+	AccepterID int `json:"accepter_id"`
+}
 type NewMessageData struct {
 	Content   string    `json:"content"`
 	ChatID    int       `json:"chat_id"`
 	SenderID  int       `json:"sender_id"`
 	SentAt    time.Time `json:"sent_at"`
 	MessageID int       `json:"message_id"`
+}
+
+type NewChat struct {
+	Type     string `json:"type"`
+	Members  []int  `json:"members"`
+	ChatName string `json:"chat_name"`
 }
 
 type NewChatData struct {

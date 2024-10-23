@@ -83,7 +83,11 @@ func (ws *WebSocketServer) registerHandlers() {
 	ws.handlers = make(map[string]func(*types.Client, []byte))
 	ws.handlers["newMessage"] = ws.handleMessage
 	ws.handlers["newChat"] = ws.handleNewChat
-	// ws.handlers["friend"] = ws.handleFriendRequest
+
+	ws.handlers["acceptFR"] = ws.handleAcceptFR
+	ws.handlers["rejectFR"] = ws.handleRejectFR
+	ws.handlers["sendFR"] = ws.handleSendFR
+	ws.handlers["removeFriend"] = ws.handleRemoveFriend
 }
 
 func (ws *WebSocketServer) handleReads(client *types.Client) {
