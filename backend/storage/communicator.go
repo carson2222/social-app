@@ -1,6 +1,8 @@
 package storage
 
-import "time"
+import (
+	"time"
+)
 
 func (s *PostgresStore) createChatsTable() error {
 
@@ -64,12 +66,13 @@ func (s *PostgresStore) GetUserChats(userId int) (map[int]bool, error) {
 	return chatIDs, nil
 }
 
-func (s *PostgresStore) NewMessage(chatID int, senderID int, content string, sentAt time.Time) error {
-	query := `INSERT INTO messages (chat_id, sender_id, content, sent_at) VALUES ($1, $2, $3, $4);`
+func (s *PostgresStore) NewMessage(chatID int, senderID int, content string, sentAt time.Time) (int, error) {
+	query := `INSERT INTO messages (chat_id, sender_id, content, sent_at) VALUES ($1, $2, $3, $4) RETURNING id;`
 
-	_, err := s.db.Exec(query, chatID, senderID, content, sentAt)
+	messageID := -1
+	err := s.db.QueryRow(query, chatID, senderID, content, sentAt).Scan(&messageID)
 
-	return err
+	return messageID, err
 }
 
 func (s *PostgresStore) IsUserInChat(userId, chatId int) error {
@@ -87,7 +90,6 @@ func (s *PostgresStore) IsUserInChat(userId, chatId int) error {
 }
 
 func (s *PostgresStore) InitNewChat(chatName string, members []int) (int, error) {
-	// TODO: Add chat naming
 	tx, err := s.db.Begin()
 	if err != nil {
 		return -1, err
@@ -134,6 +136,25 @@ func (s *PostgresStore) InitNewChat(chatName string, members []int) (int, error)
 	}
 
 	return chatId, nil
+}
+
+func (s *PostgresStore) IsPrivateChatExisting(user1 int, user2 int) (bool, error) {
+	var exists bool
+
+	query := `SELECT COUNT(id) > 0 AS chat_exists
+FROM chats
+JOIN chat_users cu1 ON chats.id = cu1.chat_id
+JOIN chat_users cu2 ON chats.id = cu2.chat_id
+WHERE chats.is_group = false
+AND cu1.user_id = $1
+AND cu2.user_id = $2
+`
+
+	err := s.db.QueryRow(query, user1, user2).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }
 
 // func (s *PostgresStore) GetChatsInfo(userId int) error {

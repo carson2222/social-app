@@ -40,7 +40,6 @@ func (ws *WebSocketServer) ServerWebSocket(w http.ResponseWriter, r *http.Reques
 
 	// Check if the user is authenticated
 	userId, err := ws.authenticateWebSocket(r)
-	log.Print(userId)
 	if err != nil || userId == -1 {
 		log.Println("failed to authenticate websocket", err)
 		utils.WriteJSON(w, http.StatusUnauthorized, "Unauthorized")
@@ -71,8 +70,6 @@ func (ws *WebSocketServer) ServerWebSocket(w http.ResponseWriter, r *http.Reques
 		Send:    make(chan []byte),
 	}
 
-	log.Print(client)
-
 	var clientsMu sync.Mutex
 	clientsMu.Lock()
 	ws.clients[client] = true
@@ -84,7 +81,7 @@ func (ws *WebSocketServer) ServerWebSocket(w http.ResponseWriter, r *http.Reques
 
 func (ws *WebSocketServer) registerHandlers() {
 	ws.handlers = make(map[string]func(*types.Client, []byte))
-	ws.handlers["sendMessage"] = ws.handleMessage
+	ws.handlers["newMessage"] = ws.handleMessage
 	ws.handlers["newChat"] = ws.handleNewChat
 	// ws.handlers["friend"] = ws.handleFriendRequest
 }
@@ -104,7 +101,7 @@ func (ws *WebSocketServer) handleReads(client *types.Client) {
 
 		var baseIncoming types.IncomingBase
 		if err := json.Unmarshal(messageBytes, &baseIncoming); err != nil {
-			log.Printf("error unmarshaling base message: %v", err)
+			log.Printf("error unmarshaling incoming base message: %v", err)
 			continue
 		}
 
@@ -136,7 +133,6 @@ func (ws *WebSocketServer) handleWrites(client *types.Client) {
 func (ws *WebSocketServer) authenticateWebSocket(r *http.Request) (int, error) {
 	sessionToken := r.Header.Get("session_token")
 
-	log.Print(sessionToken)
 	if sessionToken == "" {
 		return -1, fmt.Errorf("session token not found")
 	}
@@ -173,20 +169,41 @@ func (ws *WebSocketServer) BroadcastMessages() {
 			continue
 		}
 
+		// Create final message that will be sent
+		final := types.Final{
+			Type: outgoingMsg.Type,
+			Data: outgoingMsg.Data,
+		}
+		finalRaw, err := json.Marshal(final)
+		if err != nil {
+			log.Printf("Error marshaling final message: %v", err)
+			continue
+		}
+
 		// Iterate through clients and send messages
 		for client := range ws.clients {
 			isUserTheReceiver := false
-			if outgoingMsg.VerifyType == "chatID" && client.ChatIDs[outgoingMsg.VerifyID] {
-				isUserTheReceiver = true
+			if outgoingMsg.VerifyType == "chatID" {
+				for _, id := range outgoingMsg.VerifyIDs {
+					if client.ChatIDs[id] {
+						isUserTheReceiver = true
+						break
+					}
+				}
 			}
 
-			if outgoingMsg.VerifyType == "userID" && client.UserID == outgoingMsg.VerifyID {
-				isUserTheReceiver = true
+			if outgoingMsg.VerifyType == "userID" {
+				for _, id := range outgoingMsg.VerifyIDs {
+					if client.UserID == id {
+						isUserTheReceiver = true
+						break
+					}
+				}
 			}
 
 			if isUserTheReceiver {
 				select {
-				case client.Send <- msg:
+				case client.Send <- finalRaw:
 				default:
 					close(client.Send)
 					delete(ws.clients, client)

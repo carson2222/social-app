@@ -38,3 +38,12 @@ func (s *PostgresStore) CreateUser(c *types.Credentials) (int, error) {
 
 	return ID, nil
 }
+
+func (s *PostgresStore) IsUserExisting(id int) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1);`
+
+	exists := false
+	err := s.db.QueryRow(query, id).Scan(&exists)
+
+	return exists, err
+}
