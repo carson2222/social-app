@@ -136,7 +136,7 @@ func (ws *WebSocketServer) handleRejectFR(client *types.Client, rawMessage []byt
 		Type:       "rejectFR",
 		Data:       dataRaw,
 		VerifyType: "userID",
-		VerifyIDs:  []int{friendId, userId},
+		VerifyIDs:  []int{userId},
 	}
 	marshaledMsg, err := json.Marshal(outgoingMsg)
 	if err != nil {
@@ -190,7 +190,7 @@ func (ws *WebSocketServer) handleSendFR(client *types.Client, rawMessage []byte)
 		return
 	}
 
-	err = ws.storage.AddFriend(userId, friendId)
+	err = ws.storage.SendFR(userId, friendId)
 	if err != nil {
 		log.Print("Failed to add friend:" + err.Error())
 		return
@@ -225,5 +225,62 @@ func (ws *WebSocketServer) handleSendFR(client *types.Client, rawMessage []byte)
 }
 
 func (ws *WebSocketServer) handleRemoveFriend(client *types.Client, rawMessage []byte) {
-	// Handle friend request logic here
+
+	message := types.RemoveFriend{}
+	if err := json.Unmarshal(rawMessage, &message); err != nil {
+		log.Print("Error unmarshaling message: " + err.Error())
+	}
+
+	userId := client.UserID
+	friendId := message.FriendID
+
+	if userId == friendId {
+		log.Print("User cannot remove friend from themselves")
+		return
+	}
+
+	// Check if users are already friends
+	areFriends, err := ws.storage.AreFriends(userId, friendId)
+	if err != nil {
+		log.Print("Failed to check if users are friend:" + err.Error())
+		return
+	}
+
+	if !areFriends {
+		log.Print("Users are not friends")
+		return
+	}
+
+	err = ws.storage.RemoveFriend(userId, friendId)
+	if err != nil {
+		log.Print("Failed to remove friend:" + err.Error())
+		return
+	}
+
+	// Create data
+	data := types.RemoveFriendData{
+		FriendID: friendId,
+	}
+	dataRaw, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Error marshaling message: %v\n", err)
+		return
+	}
+
+	// Create outgoing message
+	outgoingMsg := types.OutgoingBase{
+		Type:       "removeFriend",
+		Data:       dataRaw,
+		VerifyType: "userID",
+		VerifyIDs:  []int{userId},
+	}
+
+	marshaledMsg, err := json.Marshal(outgoingMsg)
+	if err != nil {
+		log.Printf("Error marshaling message: %v\n", err)
+		return
+	}
+
+	// Broadcast message
+	ws.broadcast <- marshaledMsg
 }

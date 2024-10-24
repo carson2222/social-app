@@ -48,13 +48,24 @@ type IncomingFRData struct {
 
 type SendFR struct {
 	Type       string `json:"type"`
-	ReceiverID int    `json:"receiver"`
+	ReceiverID int    `json:"receiver_id"`
 }
 
 type SendFRData struct {
 	ReceiverID int `json:"receiver_id"`
 	SenderID   int `json:"sender_id"`
 }
+
+type RemoveFriend struct {
+	Type     string `json:"type"`
+	FriendID int    `json:"friend_id"`
+}
+
+type RemoveFriendData struct {
+	UserId   int `json:"user_id"`
+	FriendID int `json:"friend_id"`
+}
+
 type NewMessageData struct {
 	Content   string    `json:"content"`
 	ChatID    int       `json:"chat_id"`

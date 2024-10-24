@@ -66,7 +66,7 @@ func (s *PostgresStore) GetFriends(userId int) (map[int]bool, error) {
 	return friendIDs, nil
 }
 
-func (s *PostgresStore) AddFriend(senderId, receiverId int) error {
+func (s *PostgresStore) SendFR(senderId, receiverId int) error {
 	query := `INSERT INTO friend_requests (sender_id, receiver_id) VALUES ($1, $2);`
 
 	_, err := s.db.Exec(query, senderId, receiverId)
