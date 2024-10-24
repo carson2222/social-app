@@ -8,7 +8,7 @@ import (
 )
 
 func (ws *WebSocketServer) handleAcceptFR(client *types.Client, rawMessage []byte) {
-	message := types.AcceptFR{}
+	message := types.IncomingFR{}
 
 	if err := json.Unmarshal(rawMessage, &message); err != nil {
 		log.Printf("Error unmarshaling message: %v\n", err)
@@ -48,9 +48,9 @@ func (ws *WebSocketServer) handleAcceptFR(client *types.Client, rawMessage []byt
 	}
 
 	// Create data
-	data := types.AcceptFRData{
+	data := types.IncomingFRData{
 		SenderID:   senderID,
-		AccepterID: userId,
+		ReceiverID: userId,
 	}
 	dataRaw, err := json.Marshal(data)
 	if err != nil {
@@ -76,11 +76,152 @@ func (ws *WebSocketServer) handleAcceptFR(client *types.Client, rawMessage []byt
 }
 
 func (ws *WebSocketServer) handleRejectFR(client *types.Client, rawMessage []byte) {
-	// Handle friend request logic here
+	message := types.IncomingFR{}
+
+	if err := json.Unmarshal(rawMessage, &message); err != nil {
+		log.Printf("Error unmarshaling message: %v\n", err)
+		return
+	}
+
+	userId := client.UserID
+	friendId := message.SenderID
+	if userId == friendId {
+		log.Printf("User cannot reject their own friend request")
+		return
+	}
+
+	// Check if users are already friends
+	areFriends, err := ws.storage.AreFriends(userId, friendId)
+	if err != nil {
+		log.Print("Failed to check if users are friend:" + err.Error())
+		return
+	}
+
+	if areFriends {
+		log.Print("Users are already friends")
+		return
+	}
+
+	// Check if friend request is already sent
+	isRequested, err := ws.storage.IsRequestedFriend(friendId, userId)
+	if err != nil {
+		log.Print("Failed to check if user is requested friend with the friend:" + err.Error())
+		return
+	}
+
+	if !isRequested {
+		log.Print("There is no pending fr from this user")
+		return
+	}
+
+	err = ws.storage.RejectFriendRequest(userId, friendId)
+	if err != nil {
+		log.Print("Failed to reject friend request:" + err.Error())
+		return
+	}
+
+	// Create data
+	data := types.IncomingFRData{
+		SenderID:   friendId,
+		ReceiverID: userId,
+	}
+	dataRaw, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Error marshaling message: %v\n", err)
+		return
+	}
+
+	// Create outgoing message
+	outgoingMsg := types.OutgoingBase{
+		Type:       "rejectFR",
+		Data:       dataRaw,
+		VerifyType: "userID",
+		VerifyIDs:  []int{friendId, userId},
+	}
+	marshaledMsg, err := json.Marshal(outgoingMsg)
+	if err != nil {
+		log.Printf("Error marshaling message: %v\n", err)
+		return
+	}
+
+	// Broadcast message
+	ws.broadcast <- marshaledMsg
 }
 
 func (ws *WebSocketServer) handleSendFR(client *types.Client, rawMessage []byte) {
-	// Handle friend request logic here
+	message := types.SendFR{}
+
+	if err := json.Unmarshal(rawMessage, &message); err != nil {
+		log.Printf("Error unmarshaling message: %v\n", err)
+		return
+	}
+
+	userId := client.UserID
+	friendId := message.ReceiverID
+
+	if userId == friendId {
+		log.Print("User cannot send friend request to themselves")
+		return
+	}
+
+	// Check if users are already friends
+	areFriends, err := ws.storage.AreFriends(userId, friendId)
+	if err != nil {
+		log.Print("Failed to check if users are friend:" + err.Error())
+		return
+	}
+
+	if areFriends {
+		log.Print("Users are already friends")
+		return
+	}
+
+	// Check if friend request is already sent
+	isRequested1, err1 := ws.storage.IsRequestedFriend(userId, friendId)
+	isRequested2, err2 := ws.storage.IsRequestedFriend(friendId, userId)
+
+	if err1 != nil || err2 != nil {
+		log.Print("Failed to check if user is requested friend with the friend:" + err1.Error() + err2.Error())
+		return
+	}
+
+	if isRequested1 || isRequested2 {
+		log.Print("User already requested to be friend with the friend")
+		return
+	}
+
+	err = ws.storage.AddFriend(userId, friendId)
+	if err != nil {
+		log.Print("Failed to add friend:" + err.Error())
+		return
+	}
+
+	// Create data
+	data := types.SendFRData{
+		SenderID:   userId,
+		ReceiverID: friendId,
+	}
+	dataRaw, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Error marshaling message: %v\n", err)
+		return
+	}
+
+	// Create outgoing message
+	outgoingMsg := types.OutgoingBase{
+		Type:       "sendFR",
+		Data:       dataRaw,
+		VerifyType: "userID",
+		VerifyIDs:  []int{userId, friendId},
+	}
+	marshaledMsg, err := json.Marshal(outgoingMsg)
+	if err != nil {
+		log.Printf("Error marshaling message: %v\n", err)
+		return
+	}
+
+	// Broadcast message
+	ws.broadcast <- marshaledMsg
 }
 
 func (ws *WebSocketServer) handleRemoveFriend(client *types.Client, rawMessage []byte) {

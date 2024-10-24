@@ -36,14 +36,24 @@ type NewMessage struct {
 	ChatID  int    `json:"chat_id"`
 }
 
-type AcceptFR struct {
+type IncomingFR struct {
 	Type     string `json:"type"`
 	SenderID int    `json:"sender_id"`
 }
 
-type AcceptFRData struct {
+type IncomingFRData struct {
 	SenderID   int `json:"sender_id"`
-	AccepterID int `json:"accepter_id"`
+	ReceiverID int `json:"accepter_id"`
+}
+
+type SendFR struct {
+	Type       string `json:"type"`
+	ReceiverID int    `json:"receiver"`
+}
+
+type SendFRData struct {
+	ReceiverID int `json:"receiver_id"`
+	SenderID   int `json:"sender_id"`
 }
 type NewMessageData struct {
 	Content   string    `json:"content"`
